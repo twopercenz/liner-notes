@@ -35,6 +35,7 @@ export default function EntryForm({ initial }: { initial?: Entry }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const [showResults, setShowResults] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -42,23 +43,35 @@ export default function EntryForm({ initial }: { initial?: Entry }) {
 
   // 검색어나 분류(앨범↔곡)가 바뀔 때마다 iTunes Search API를 다시 호출한다 (디바운스 350ms).
   useEffect(() => {
-    if (!searchTerm.trim()) {
+    const trimmed = searchTerm.trim();
+    if (!trimmed) {
       setResults([]);
       setSearching(false);
+      setSearchError("");
       return;
     }
     setSearching(true);
+    setSearchError("");
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
         const entityType = type === "song" ? "song" : "album";
         const res = await fetch(
-          `/api/search?term=${encodeURIComponent(searchTerm)}&type=${entityType}`
+          `/api/search?term=${encodeURIComponent(trimmed)}&type=${entityType}`
         );
-        const data = await res.json();
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data) {
+          setResults([]);
+          setSearchError(
+            (data && data.error) ||
+              `검색에 실패했어요 (오류 코드 ${res.status}). 잠시 후 다시 시도해주세요.`
+          );
+          return;
+        }
         setResults(data.results ?? []);
       } catch {
         setResults([]);
+        setSearchError("검색에 실패했어요. 네트워크 상태를 확인해주세요.");
       } finally {
         setSearching(false);
       }
@@ -173,14 +186,25 @@ export default function EntryForm({ initial }: { initial?: Entry }) {
           }}
           onFocus={() => setShowResults(true)}
         />
-        {showResults && (searching || results.length > 0) && (
+        {showResults && searchTerm.trim() && (
           <ul className="search-results">
             {searching && (
               <li className="text-caption search-results-status">
                 검색 중…
               </li>
             )}
+            {!searching && searchError && (
+              <li className="text-caption search-results-status search-results-error">
+                {searchError}
+              </li>
+            )}
+            {!searching && !searchError && results.length === 0 && (
+              <li className="text-caption search-results-status">
+                검색 결과가 없어요. 아래 입력칸에 직접 적어도 괜찮아요.
+              </li>
+            )}
             {!searching &&
+              !searchError &&
               results.map((r) => (
                 <li key={r.appleMusicId}>
                   <button

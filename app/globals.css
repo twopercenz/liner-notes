@@ -584,6 +584,18 @@ button {
 
 .search-results-status {
   padding: var(--space-sm);
+  display: block;
+}
+
+.search-results-error {
+  color: var(--color-danger);
+}
+
+.config-warning {
+  background: #fff4ed;
+  color: var(--color-danger);
+  padding: var(--space-sm) var(--space-lg);
+  text-align: center;
 }
 
 .search-result {
