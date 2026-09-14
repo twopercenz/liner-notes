@@ -7,4 +7,4 @@ export const siteUrl =
 
 export const siteName = "Liner Notes";
 export const siteDescription =
-  "앨범, 싱글, EP, 곡에 대한 리뷰와 감상평, 구절별 해석을 기록하는 온라인 음악 다이어리";
+  "인디 밴드 가사의 한 구절과 그 해석을 나누는 곳 — 좋아요, 댓글, 무드 태그, 가사 전문 검색까지";

@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { TrackDraft } from "@/lib/types";
+import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import LyricsAnnotator from "./LyricsAnnotator";
+import { TrackDraft } from "@/lib/types";
 
 interface TrackListProps {
   artist: string;
@@ -11,9 +15,8 @@ interface TrackListProps {
   onChange: (tracks: TrackDraft[]) => void;
 }
 
-// 앨범/EP/싱글은 제목이 앨범명이라, entries.lyrics 하나로는 "어느 곡" 가사인지
-// 알 수 없다. 그래서 트랙(곡)을 여러 개 추가하고, 트랙마다 (아티스트 + 그 곡
-// 제목)으로 따로 가사를 가져오고 구절별 해석도 각자 달 수 있게 한다.
+// 앨범/EP/싱글은 제목이 앨범명이라, 트랙(곡)을 여러 개 추가하고 트랙마다
+// (아티스트 + 그 곡 제목)으로 따로 가사를 가져오고 구절별 해석도 각자 단다.
 export default function TrackList({
   artist,
   appleMusicId,
@@ -33,7 +36,7 @@ export default function TrackList({
       id: crypto.randomUUID(),
       title: title.trim(),
       lyrics: "",
-      annotations: [],
+      posts: [],
     };
     onChange([...tracks, draft]);
     setOpenTrackId(draft.id);
@@ -66,7 +69,7 @@ export default function TrackList({
         id: crypto.randomUUID(),
         title: t.title,
         lyrics: "",
-        annotations: [],
+        posts: [],
       }));
       onChange([...tracks, ...fetched]);
     } catch {
@@ -79,7 +82,7 @@ export default function TrackList({
   async function fetchTrackLyrics(track: TrackDraft) {
     if (!artist.trim() || !track.title.trim()) return;
     if (
-      track.annotations.length > 0 &&
+      track.posts.length > 0 &&
       !confirm("가사를 새로 가져오면 이 곡에 추가한 해석이 모두 사라져요. 계속할까요?")
     ) {
       return;
@@ -99,7 +102,7 @@ export default function TrackList({
         }));
         return;
       }
-      updateTrack(track.id, { lyrics: data.lyrics, annotations: [] });
+      updateTrack(track.id, { lyrics: data.lyrics, posts: [] });
     } catch {
       setTrackErrors((prev) => ({
         ...prev,
@@ -113,33 +116,35 @@ export default function TrackList({
   function handleTrackLyricsEdit(track: TrackDraft, value: string) {
     if (value === track.lyrics) return;
     if (
-      track.annotations.length > 0 &&
+      track.posts.length > 0 &&
       !confirm("가사를 바꾸면 이 곡에 추가한 해석이 모두 사라져요. 계속할까요?")
     ) {
       return;
     }
-    updateTrack(track.id, { lyrics: value, annotations: [] });
+    updateTrack(track.id, { lyrics: value, posts: [] });
   }
 
   return (
-    <div className="track-list">
+    <div className="space-y-3">
       {appleMusicId && (
-        <div className="lyrics-fetch-row">
-          <button
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
             type="button"
-            className="btn-secondary-pill"
+            variant="outline"
+            size="sm"
             onClick={fetchTracklist}
             disabled={fetchingList}
           >
             {fetchingList ? "가져오는 중…" : "트랙 목록 자동으로 가져오기"}
-          </button>
-          {listError && <span className="text-caption form-error">{listError}</span>}
+          </Button>
+          {listError && (
+            <span className="text-sm text-destructive">{listError}</span>
+          )}
         </div>
       )}
 
-      <div className="track-add-row">
-        <input
-          className="text-input"
+      <div className="flex gap-2">
+        <Input
           placeholder="트랙(곡) 제목을 입력하고 추가"
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
@@ -150,102 +155,114 @@ export default function TrackList({
             }
           }}
         />
-        <button
-          type="button"
-          className="btn-secondary-pill"
-          onClick={() => addTrack(newTitle)}
-        >
+        <Button type="button" variant="outline" onClick={() => addTrack(newTitle)}>
           + 트랙 추가
-        </button>
+        </Button>
       </div>
 
       {tracks.length === 0 && (
-        <p className="text-caption">아직 추가한 트랙이 없어요.</p>
+        <p className="text-sm text-muted-foreground">아직 추가한 트랙이 없어요.</p>
       )}
 
-      <ul className="track-items">
-        {tracks.map((track) => (
-          <li key={track.id} className="track-item">
-            <div
-              className="track-item-header"
-              onClick={() =>
-                setOpenTrackId(openTrackId === track.id ? null : track.id)
-              }
-            >
-              <input
-                className="text-input track-title-input"
-                value={track.title}
-                onClick={(e) => e.stopPropagation()}
-                onChange={(e) => updateTrack(track.id, { title: e.target.value })}
-              />
-              <button
-                type="button"
-                className="link-danger"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeTrack(track.id);
-                }}
+      <ul className="space-y-2">
+        {tracks.map((track) => {
+          const isOpen = openTrackId === track.id;
+          return (
+            <li key={track.id} className="overflow-hidden rounded-lg border">
+              <div
+                className="flex cursor-pointer items-center gap-2 px-3 py-2"
+                onClick={() => setOpenTrackId(isOpen ? null : track.id)}
               >
-                삭제
-              </button>
-            </div>
+                {isOpen ? (
+                  <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                )}
+                <Input
+                  value={track.title}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => updateTrack(track.id, { title: e.target.value })}
+                  className="h-8 flex-1 border-transparent bg-transparent shadow-none focus-visible:border-input"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeTrack(track.id);
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
 
-            {openTrackId === track.id && (
-              <div className="track-item-body">
-                <div className="lyrics-fetch-row">
-                  <button
-                    type="button"
-                    className="btn-secondary-pill"
-                    onClick={() => fetchTrackLyrics(track)}
-                    disabled={
-                      loadingTrackId === track.id ||
-                      !artist.trim() ||
-                      !track.title.trim()
-                    }
-                  >
-                    {loadingTrackId === track.id
-                      ? "가져오는 중…"
-                      : "가사 자동으로 가져오기"}
-                  </button>
-                  {trackErrors[track.id] && (
-                    <span className="text-caption form-error">
-                      {trackErrors[track.id]}
-                    </span>
+              {isOpen && (
+                <div className="space-y-3 border-t bg-muted/30 p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fetchTrackLyrics(track)}
+                      disabled={
+                        loadingTrackId === track.id ||
+                        !artist.trim() ||
+                        !track.title.trim()
+                      }
+                    >
+                      {loadingTrackId === track.id
+                        ? "가져오는 중…"
+                        : "가사 자동으로 가져오기"}
+                    </Button>
+                    {trackErrors[track.id] && (
+                      <span className="text-sm text-destructive">
+                        {trackErrors[track.id]}
+                      </span>
+                    )}
+                  </div>
+                  <Textarea
+                    rows={6}
+                    value={track.lyrics}
+                    onChange={(e) => handleTrackLyricsEdit(track, e.target.value)}
+                    placeholder="가사를 붙여넣거나 위 버튼으로 가져와보세요"
+                  />
+                  {track.lyrics.trim() && (
+                    <LyricsAnnotator
+                      lyrics={track.lyrics}
+                      annotations={track.posts.map((p) => ({
+                        ...p,
+                        tags: p.tags.map((name) => ({ name })),
+                      }))}
+                      editable
+                      onAdd={(draft) =>
+                        updateTrack(track.id, {
+                          posts: [
+                            ...track.posts,
+                            {
+                              id: crypto.randomUUID(),
+                              start_offset: draft.start_offset,
+                              end_offset: draft.end_offset,
+                              quote: draft.quote,
+                              note: draft.note,
+                              tags: draft.tags,
+                            },
+                          ],
+                        })
+                      }
+                      onDelete={(id) =>
+                        updateTrack(track.id, {
+                          posts: track.posts.filter((p) => p.id !== id),
+                        })
+                      }
+                    />
                   )}
                 </div>
-                <textarea
-                  className="textarea"
-                  rows={6}
-                  value={track.lyrics}
-                  onChange={(e) => handleTrackLyricsEdit(track, e.target.value)}
-                  placeholder="가사를 붙여넣거나 위 버튼으로 가져와보세요"
-                />
-                {track.lyrics.trim() && (
-                  <LyricsAnnotator
-                    lyrics={track.lyrics}
-                    annotations={track.annotations}
-                    editable
-                    onAdd={(draft) =>
-                      updateTrack(track.id, {
-                        annotations: [
-                          ...track.annotations,
-                          { id: crypto.randomUUID(), ...draft },
-                        ],
-                      })
-                    }
-                    onDelete={(id) =>
-                      updateTrack(track.id, {
-                        annotations: track.annotations.filter(
-                          (a) => a.id !== id
-                        ),
-                      })
-                    }
-                  />
-                )}
-              </div>
-            )}
-          </li>
-        ))}
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

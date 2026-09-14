@@ -1,33 +1,37 @@
 # 🎧 Liner Notes
 
-앨범, 싱글, EP, 곡에 대한 리뷰와 감상평, 해석을 기록하는 온라인 음악 다이어리입니다.
-Next.js + Supabase로 만들어져 누구나 접속해서 글을 쓰고 읽을 수 있습니다.
+인디 밴드 가사의 한 구절과 그 해석을 나누는 곳. 가사 구절 + 해석("post")이
+피드에 흐르고, 좋아요·댓글·무드 태그·가사 전문 검색까지 되는 온라인 커뮤니티입니다.
 
 - **프론트엔드**: Next.js (App Router) + TypeScript
-- **데이터베이스**: Supabase (Postgres)
+- **UI**: [shadcn/ui](https://ui.shadcn.com) (Radix UI 프리미티브 + Tailwind CSS v4) + [Interop](https://www.jhaemin.com) 폰트
+- **데이터베이스**: Supabase (Postgres, `tsvector` 전문검색 포함)
 - **곡/앨범 검색 자동완성**: iTunes Search API (무료, API 키 불필요)
 - **가사**: lrclib.net (무료, API 키 불필요)
 - **배포**: Vercel
-- **디자인**: 맥시멀리즘(maximalism) — 원색 클래시(핑크/파랑/노랑/보라), 두꺼운 검정 테두리 + 하드 섀도우, 큼직한 포스터체(Black Han Sans) 타이포, 쉬지 않고 흐르는 마키 배너 (Apple 스타일 → 클레이모피즘을 거쳐 최종적으로 전환)
-- **3D 오브젝트**: 랜딩 히어로에 떠 있는 팝아트 스티커 느낌의 도형들. 순수 CSS(`perspective` + `rotateX/Y`)로 구현 — WebGL 라이브러리 없이도 진짜 3D처럼 보임
-- **SEO/공유**: Open Graph 이미지, 파비콘/앱 아이콘, `sitemap.xml`, `robots.txt`, PWA `manifest.webmanifest`까지 자동 생성
+
+## 핵심 개념: Work → Track → Post
+
+- **Work**: 앨범/EP/싱글/곡 — 리뷰 대상이 되는 발매 단위
+- **Track**: Work 안의 곡 하나. "곡" 타입 Work는 트랙이 정확히 1개(자기 자신)라
+  앨범이든 싱글이든 곡이든 가사 처리 로직이 항상 동일하다.
+- **Post**: 가사 구절 + 해석. **이 사이트의 핵심 콘텐츠 단위**이자 피드에
+  흐르는 것. 좋아요, 댓글, 태그가 전부 Post에 붙는다.
 
 ## 1. Supabase 프로젝트 만들기
 
 1. [supabase.com](https://supabase.com)에서 새 프로젝트 생성
-2. 프로젝트의 **SQL Editor**로 이동해서 [`supabase/schema.sql`](./supabase/schema.sql) 내용을 붙여넣고 실행
-   - `entries`, `annotations`, `tracks`, `track_annotations` 테이블과, 로그인 없이도
-     누구나 읽고 쓸 수 있게 하는 RLS 정책이 생성됩니다.
-   - (나중에 특정 사용자만 쓰기 가능하게 바꾸고 싶다면, 이 정책들을 Supabase Auth 기반으로 교체하면 됩니다.)
-   - **이미 예전 버전으로 배포해서 `entries` 테이블이 있다면** `schema.sql`을 다시 실행하지 말고
-     아래 마이그레이션을 "실행한 적 없는 것만" 순서대로 실행하세요:
-     1. [`002_lyrics_and_annotations.sql`](./supabase/migrations/002_lyrics_and_annotations.sql) — 가사 컬럼 + annotations 테이블
-     2. [`003_tracks.sql`](./supabase/migrations/003_tracks.sql) — 앨범/EP/싱글의 곡별(트랙) 가사 + 해석
+2. **SQL Editor**에서 [`supabase/schema.sql`](./supabase/schema.sql) 실행
+   - `works`, `tracks`, `posts`, `likes`, `comments`, `tags`, `post_tags` 테이블과
+     로그인 없이도 누구나 읽고 쓸 수 있게 하는 RLS 정책이 생성됩니다.
+   - `tracks.lyrics`, `posts`(quote+note)에 `tsvector` 전문검색 인덱스가 포함됩니다.
+   - **이전 버전(entries/annotations/tracks/track_annotations)을 이미 배포했다면**
+     `schema.sql` 대신 [`supabase/migrations/004_unify_posts_schema.sql`](./supabase/migrations/004_unify_posts_schema.sql)을
+     실행하세요. ⚠️ **파괴적 마이그레이션**이라 기존 데이터가 삭제됩니다 — 보존하고
+     싶은 데이터가 있다면 실행 전에 SQL Editor에서 CSV로 내보내두세요.
 3. **Settings → API**에서 `Project URL`과 `anon public` 키를 복사
 
 ## 2. 환경변수 설정
-
-`.env.example`을 복사해서 `.env.local`을 만들고 값을 채워주세요.
 
 ```bash
 cp .env.example .env.local
@@ -49,87 +53,72 @@ npm run dev
 
 ## 4. Vercel로 배포하기
 
-1. 이 저장소를 [vercel.com/new](https://vercel.com/new)에서 Import
-2. Framework Preset은 자동으로 **Next.js**가 감지됩니다
-3. **Environment Variables**에 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` 추가 (2단계와 동일한 값)
-4. **Deploy** 클릭 → `https://liner-notes-<random>.vercel.app` 같은 주소로 배포 완료
-5. 이후에는 `main` 브랜치에 푸시할 때마다 자동으로 재배포됩니다
+1. 이 저장소를 [vercel.com/new](https://vercel.com/new)에서 Import (Next.js 자동 감지)
+2. **Environment Variables**에 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` 추가
+3. **Deploy** — 이후 `main` 브랜치 푸시마다 자동 재배포
 
-## 5. (선택) 커스텀 도메인 연결하기
+## 5. (선택) 커스텀 도메인
 
-1. 원하는 도메인을 구매 (가비아, Namecheap, Vercel Domains 등 아무 곳이나)
-2. Vercel 프로젝트 → **Settings → Domains** → 구매한 도메인 입력 → 안내되는 DNS 레코드(A/CNAME)를
-   도메인 등록업체 설정에 추가
-3. DNS가 반영되면(보통 몇 분~몇 시간) Vercel이 자동으로 SSL 인증서까지 발급해줌
-4. Vercel 프로젝트 **Environment Variables**에 `NEXT_PUBLIC_SITE_URL=https://내도메인.com` 추가하고 재배포
-   - 이 값은 `lib/site.ts`에서 Open Graph 링크, `sitemap.xml`, `robots.txt`의 기준 주소로 쓰입니다.
-   - 설정 안 해도 사이트는 정상 동작하고, 그냥 Vercel 기본 도메인이 대신 쓰입니다.
+Vercel 프로젝트 → **Settings → Domains**에서 도메인을 연결하고, 연결한 도메인으로
+`NEXT_PUBLIC_SITE_URL` 환경변수를 설정하면 Open Graph/sitemap이 그 도메인 기준으로 생성됩니다.
 
 ## 기능
 
-- 앨범 / EP / 싱글 / 곡 단위로 리뷰·감상평 작성
-- **Apple Music(iTunes) 검색 자동완성** — 제목을 입력하면 실시간으로 검색 결과가 뜨고, 선택하면 아티스트/제목/발매연도/커버 이미지가 자동으로 채워짐
-- **가사 자동 가져오기 + 구절별 해석** — "가사 자동으로 가져오기" 버튼으로 lrclib.net에서 가사를 받아오거나 직접 붙여넣고, 해석하고 싶은 구절을 마우스로 드래그해서 선택하면 그 부분에만 해석을 달 수 있음 (Genius 스타일). 상세 페이지에서는 가사 전문이 보이고, 해석이 달린 구절은 밑줄로 표시되어 클릭하면 해석이 펼쳐짐
-- **앨범/EP/싱글은 곡(트랙)별로 따로** — 항목 제목이 앨범명이라 그대로는 가사를 못 찾으므로, "트랙 목록 자동으로 가져오기"(Apple Music에 있는 트랙리스트를 통째로 불러옴)나 "+ 트랙 추가"로 곡을 하나씩 추가하고, 각 트랙마다 독립적으로 가사를 가져와 구절별 해석을 달 수 있음
-- 분류별 필터, 아티스트/제목 검색
-- 별점
-- 수정/삭제
-- 모든 데이터는 Supabase에 저장되어 어느 기기에서 접속해도 동일하게 보임 (로그인 없이 누구나 쓰기 가능)
-- 랜딩 페이지(`/`)에 3D clay 오브젝트가 떠 있는 히어로, 최근 리뷰 미리보기
-- 커스텀 파비콘/앱 아이콘, 링크 공유 시 미리보기 카드(Open Graph), 검색엔진용 sitemap/robots
+- **가사 피드** (`/`) — 가사 구절 + 해석이 최신순으로 흐르는 메인 화면
+- **좋아요/댓글** — 로그인 없이, 브라우저별 익명 id로 좋아요 중복만 방지
+- **무드/태그 탐색** (`/explore`) — 태그로 필터링, 전체 작품 카탈로그
+- **가사 전문 검색** — Postgres 전문검색으로 가사 구절/해석 본문을 검색 (아티스트·제목뿐 아니라 가사 내용까지)
+- **Apple Music(iTunes) 검색 자동완성** — 아티스트/제목/발매연도/커버 자동 완성
+- **가사 자동 가져오기 + 구절별 해석** — lrclib.net에서 가사를 받아오고, 구절을 드래그해서 해석 + 무드 태그를 달 수 있음 (Genius 스타일)
+- **앨범/EP/싱글은 곡(트랙)별로 따로** — 트랙 목록 자동 가져오기, 트랙마다 독립적으로 가사/해석
+- 별점, 감상평, 수정/삭제
 
 ## 파일 구조
 
 ```
 liner-notes/
 ├── app/
-│   ├── page.tsx              # 랜딩 페이지: 히어로 + 최근 리뷰 미리보기
-│   ├── browse/page.tsx        # 메인 페이지: 전체 목록 + 필터/검색
-│   ├── write/page.tsx         # 새 글쓰기
-│   ├── write/[id]/page.tsx    # 글 수정
-│   ├── entry/[id]/page.tsx    # 상세 보기 (가사 + 구절별 해석 표시)
-│   ├── api/search/route.ts    # iTunes Search API 프록시 (자동완성)
-│   ├── api/lyrics/route.ts    # lrclib.net 프록시 (가사 가져오기)
-│   ├── api/tracklist/route.ts # iTunes Lookup 프록시 (앨범의 트랙 목록 가져오기)
-│   ├── layout.tsx
-│   ├── globals.css            # 맥시멀리즘 디자인 토큰
-│   ├── icon.tsx / apple-icon.tsx / opengraph-image.tsx  # 아이콘 · 공유 미리보기 이미지 (자동 생성)
-│   ├── manifest.ts            # PWA 매니페스트
-│   ├── robots.ts / sitemap.ts # 검색엔진용
-│   └── not-found.tsx          # 커스텀 404
+│   ├── page.tsx               # 홈: 가사 피드
+│   ├── explore/page.tsx        # 검색 + 태그/작품 탐색
+│   ├── write/page.tsx           # 새 글쓰기
+│   ├── write/[id]/page.tsx      # 글 수정
+│   ├── entry/[id]/page.tsx      # 작품 상세 (트랙 목록 + 가사)
+│   ├── post/[id]/page.tsx       # 가사 구절 상세 (좋아요/댓글)
+│   ├── api/search/route.ts      # iTunes Search API 프록시
+│   ├── api/lyrics/route.ts      # lrclib.net 프록시
+│   ├── api/tracklist/route.ts   # iTunes Lookup 프록시
+│   ├── layout.tsx, globals.css  # shadcn/ui 테마 + Interop 폰트
+│   ├── icon.tsx / apple-icon.tsx / opengraph-image.tsx
+│   └── manifest.ts, robots.ts, sitemap.ts, not-found.tsx
 ├── components/
-│   ├── GlobalNav.tsx
-│   ├── PopShapes.tsx          # 랜딩 히어로의 CSS 3D 오브젝트
-│   ├── MarqueeBar.tsx         # 흐르는 마키 배너
-│   ├── EntryBrowser.tsx       # 필터/검색 + 그리드
-│   ├── EntryCard.tsx
-│   ├── EntryForm.tsx          # 작성/수정 폼 + 검색 자동완성 + 가사/해석
-│   ├── LyricsAnnotator.tsx    # 가사 하이라이트 + 구절별 해석 (작성/보기 공용)
-│   ├── TrackList.tsx          # 앨범/EP/싱글의 곡별 가사 편집 (작성 폼용)
-│   ├── TrackListView.tsx      # 곡별 가사 아코디언 (상세 페이지, 읽기 전용)
-│   └── DeleteButton.tsx
+│   ├── ui/                     # shadcn/ui 프리미티브 (button, card, input, dialog, ...)
+│   ├── GlobalNav.tsx, SiteFooter.tsx
+│   ├── PostCard.tsx             # 피드 카드
+│   ├── LikeButton.tsx, CommentSection.tsx, TagPicker.tsx
+│   ├── WorkForm.tsx             # 작성/수정 폼
+│   ├── TrackList.tsx, WorkTracks.tsx  # 트랙별 가사 편집/보기
+│   ├── LyricsAnnotator.tsx      # 가사 하이라이트 + 구절별 해석 (작성/보기 공용)
+│   └── WorkCard.tsx
 ├── lib/
-│   ├── supabaseClient.ts
-│   ├── site.ts                # 배포 도메인 등 사이트 전역 상수
-│   ├── types.ts
-│   └── textOffset.ts          # 텍스트 선택 ↔ 문자 오프셋 변환 유틸
-└── supabase/
-    ├── schema.sql             # 새 프로젝트용 전체 스키마
-    └── migrations/
-        ├── 002_lyrics_and_annotations.sql  # 가사/해석 기능 추가
-        └── 003_tracks.sql                  # 앨범 등의 곡별(트랙) 가사/해석 추가
+│   ├── supabaseClient.ts, site.ts, types.ts, utils.ts (shadcn cn())
+│   ├── posts.ts                 # 피드/검색/태그별 조회 쿼리
+│   ├── device.ts                # 익명 좋아요용 device id
+│   └── textOffset.ts            # 텍스트 선택 ↔ 문자 오프셋 변환
+├── fonts/interop/                # Interop 폰트 (OFL 라이선스, fonts/interop/OFL.txt)
+├── supabase/
+│   ├── schema.sql                # 새 프로젝트용 전체 스키마
+│   └── migrations/004_unify_posts_schema.sql
+└── .claude/skills/                # ui-ux-pro-max 스킬 번들 (디자인 레퍼런스)
 ```
 
-## 구절별 해석은 어떻게 저장되나요?
+## 폰트 라이선스
 
-**"곡" 타입**은 항목 자체가 노래 한 곡이므로 `entries.lyrics` + `annotations` 테이블에 바로 저장합니다.
-**"앨범/EP/싱글" 타입**은 곡이 여러 개라서 `tracks` 테이블(트랙별 `lyrics`) + `track_annotations`
-테이블로 따로 관리합니다. 두 경우 모두 해석은 `start_offset`/`end_offset`(가사 문자열 기준 문자
-인덱스), `quote`(해당 구절 텍스트), `note`(해석)로 저장됩니다. 가사를 수정하면 기존 해석들의
-위치가 어긋날 수 있어서, 가사를 바꾸면 확인 후 그 가사에 달린 해석이 모두 초기화됩니다.
+[Interop](https://www.jhaemin.com)은 Jang Haemin이 만든, SIL Open Font License로
+배포되는 서체입니다 (한글 지원). 전체 라이선스는 [`fonts/interop/OFL.txt`](./fonts/interop/OFL.txt)를 참고하세요.
 
 ## 다음에 해볼 만한 것들
 
-- Supabase Auth로 로그인 붙여서 "나만 쓰기" 모드로 전환
-- 월간 감상 통계, 좋아하는 아티스트 랭킹
-- 리뷰에 태그(장르, 무드) 붙이기
+- 다크모드 토글 (CSS 변수는 이미 준비되어 있음, 스위치 UI만 추가하면 됨)
+- Supabase Auth로 로그인 붙여서 "내 계정" 도입
+- 무한 스크롤 피드, 인기순 정렬
+- 댓글 대댓글, 신고 기능

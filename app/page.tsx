@@ -1,57 +1,40 @@
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
-import EntryCard from "@/components/EntryCard";
-import PopShapes from "@/components/PopShapes";
-import { Entry } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import PostCard from "@/components/PostCard";
+import { fetchFeed } from "@/lib/posts";
 
 export const revalidate = 0;
 
-// 랜딩 페이지: 히어로 + 최근 리뷰 미리보기만 보여준다.
-// 실제 전체 목록/필터/검색은 /browse(메인 페이지)에 있다.
-export default async function LandingPage() {
-  const { data } = await supabase
-    .from("entries")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(4);
-
-  const recent = (data ?? []) as Entry[];
+// 메인 피드: 가사 구절 + 해석이 최신순으로 흐르는 타임라인.
+// 이 사이트의 핵심 화면 — 앨범/아티스트 정보는 각 카드의 보조 컨텍스트일 뿐이다.
+export default async function HomePage() {
+  const posts = await fetchFeed();
 
   return (
-    <>
-      <section className="hero">
-        <div className="hero-scene" aria-hidden="true">
-          <PopShapes />
-        </div>
-        <div className="hero-content">
-          <h1 className="text-hero-display">Liner Notes</h1>
-          <p className="text-lead">
-            앨범, 싱글, EP, 곡에 대한 리뷰와 해석을 기록하는 온라인 다이어리
-          </p>
-          <div className="hero-actions">
-            <Link href="/write" className="btn-primary">
-              새 글쓰기
-            </Link>
-            <Link href="/browse" className="btn-secondary-pill">
-              둘러보기
-            </Link>
-          </div>
-        </div>
-      </section>
+    <div className="mx-auto max-w-xl px-4 py-6 sm:px-6">
+      <div className="mb-6 space-y-1">
+        <h1 className="text-2xl font-extrabold tracking-tight">가사 피드</h1>
+        <p className="text-sm text-muted-foreground">
+          인디 밴드 가사의 한 구절과 그 해석이 모이는 곳
+        </p>
+      </div>
 
-      {recent.length > 0 && (
-        <section className="product-tile product-tile--parchment">
-          <h2 className="text-display-md">최근 올라온 리뷰</h2>
-          <div className="entry-grid entry-grid--preview">
-            {recent.map((entry) => (
-              <EntryCard key={entry.id} entry={entry} />
-            ))}
-          </div>
-          <Link href="/browse" className="btn-secondary-pill">
-            전체 보기
-          </Link>
-        </section>
+      {posts.length === 0 ? (
+        <div className="rounded-xl border border-dashed p-10 text-center">
+          <p className="mb-4 text-sm text-muted-foreground">
+            아직 올라온 가사 해석이 없어요. 첫 글을 남겨보세요.
+          </p>
+          <Button asChild>
+            <Link href="/write">첫 글쓰기</Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {posts.map((post) => (
+            <PostCard key={post.id} post={post} />
+          ))}
+        </div>
       )}
-    </>
+    </div>
   );
 }

@@ -1,7 +1,19 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { buildSegments, getSelectionOffsets } from "@/lib/textOffset";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import TagPicker from "@/components/TagPicker";
+import { cn } from "@/lib/utils";
+
+export interface AnnotatorTag {
+  id?: string;
+  name: string;
+  slug?: string;
+}
 
 export interface AnnotationLike {
   id: string;
@@ -9,6 +21,7 @@ export interface AnnotationLike {
   end_offset: number;
   quote: string;
   note: string;
+  tags?: AnnotatorTag[];
 }
 
 interface LyricsAnnotatorProps<A extends AnnotationLike> {
@@ -21,8 +34,11 @@ interface LyricsAnnotatorProps<A extends AnnotationLike> {
     end_offset: number;
     quote: string;
     note: string;
+    tags: string[];
   }) => void;
   onDelete?: (id: string) => void;
+  /** 읽기 전용 모드에서, 하이라이트를 클릭했을 때 상세 페이지로 보낼 링크를 만든다. */
+  linkForAnnotation?: (annotation: A) => string | undefined;
 }
 
 interface PendingSelection {
@@ -37,11 +53,13 @@ export default function LyricsAnnotator<A extends AnnotationLike>({
   editable = false,
   onAdd,
   onDelete,
+  linkForAnnotation,
 }: LyricsAnnotatorProps<A>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingSelection | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
+  const [tagDraft, setTagDraft] = useState<string[]>([]);
   const [selectionError, setSelectionError] = useState("");
 
   const segments = buildSegments(lyrics, annotations);
@@ -67,6 +85,7 @@ export default function LyricsAnnotator<A extends AnnotationLike>({
     setSelectionError("");
     setPending({ start: sel.start, end: sel.end, text: sel.text });
     setNoteDraft("");
+    setTagDraft([]);
   }
 
   function confirmAdd() {
@@ -76,93 +95,123 @@ export default function LyricsAnnotator<A extends AnnotationLike>({
       end_offset: pending.end,
       quote: pending.text,
       note: noteDraft.trim(),
+      tags: tagDraft,
     });
     setPending(null);
     setNoteDraft("");
+    setTagDraft([]);
     window.getSelection()?.removeAllRanges();
   }
 
   function cancelAdd() {
     setPending(null);
     setNoteDraft("");
+    setTagDraft([]);
     window.getSelection()?.removeAllRanges();
   }
 
   return (
-    <div className="lyrics-annotator">
+    <div className="space-y-3">
       {editable && (
-        <p className="text-fine-print lyrics-hint">
-          가사에서 해석을 달고 싶은 구절을 마우스로 드래그해서 선택해보세요.
+        <p className="text-xs text-muted-foreground">
+          해석을 달고 싶은 구절을 마우스로 드래그해서 선택해보세요.
         </p>
       )}
 
-      <div className="lyrics-text" ref={containerRef} onMouseUp={handleMouseUp}>
-        {segments.map((seg, i) =>
-          seg.annotation ? (
-            <span key={seg.annotation.id}>
-              <span
-                className={`lyric-highlight ${
-                  openId === seg.annotation.id ? "lyric-highlight--open" : ""
-                }`}
-                onClick={() =>
-                  setOpenId(openId === seg.annotation!.id ? null : seg.annotation!.id)
-                }
+      <div
+        ref={containerRef}
+        onMouseUp={handleMouseUp}
+        className="rounded-lg border bg-muted/40 p-4 text-[15px] leading-loose whitespace-pre-wrap select-text"
+      >
+        {segments.map((seg, i) => {
+          if (!seg.annotation) return <span key={i}>{seg.text}</span>;
+
+          const ann = seg.annotation;
+          const isOpen = openId === ann.id;
+          const href = linkForAnnotation?.(ann);
+          const HighlightTag = href ? Link : "span";
+
+          return (
+            <span key={ann.id}>
+              <HighlightTag
+                href={href as string}
+                className={cn(
+                  "cursor-pointer rounded bg-primary/15 px-0.5 underline decoration-primary decoration-2 underline-offset-2 transition-colors hover:bg-primary/25",
+                  isOpen && "bg-primary text-primary-foreground"
+                )}
+                onClick={(e: React.MouseEvent) => {
+                  if (href) return; // 읽기 전용에서는 상세 페이지로 이동
+                  e.preventDefault();
+                  setOpenId(isOpen ? null : ann.id);
+                }}
               >
                 {seg.text}
-              </span>
-              {openId === seg.annotation.id && (
-                <span className="lyric-note">
-                  <span className="text-body">{seg.annotation.note}</span>
+              </HighlightTag>
+              {isOpen && !href && (
+                <span className="mt-1 mb-2 block rounded-md border-l-4 border-primary bg-background px-3 py-2 text-sm shadow-sm">
+                  <span className="block whitespace-pre-wrap">{ann.note}</span>
+                  {ann.tags && ann.tags.length > 0 && (
+                    <span className="mt-1.5 flex flex-wrap gap-1">
+                      {ann.tags.map((t) => (
+                        <Badge key={t.name} variant="outline" className="text-[11px]">
+                          #{t.name}
+                        </Badge>
+                      ))}
+                    </span>
+                  )}
                   {editable && onDelete && (
-                    <button
+                    <Button
                       type="button"
-                      className="link-danger lyric-note-delete"
+                      variant="link"
+                      size="sm"
+                      className="mt-1 h-auto p-0 text-destructive"
                       onClick={() => {
-                        onDelete(seg.annotation!.id);
+                        onDelete(ann.id);
                         setOpenId(null);
                       }}
                     >
                       이 해석 삭제
-                    </button>
+                    </Button>
                   )}
                 </span>
               )}
             </span>
-          ) : (
-            <span key={i}>{seg.text}</span>
-          )
-        )}
+          );
+        })}
       </div>
 
       {editable && selectionError && (
-        <p className="text-caption form-error">{selectionError}</p>
+        <p className="text-sm font-medium text-destructive">{selectionError}</p>
       )}
 
       {editable && pending && (
-        <div className="annotation-editor">
-          <p className="text-caption">
-            선택한 구절: <span className="annotation-editor-quote">“{pending.text}”</span>
+        <div className="space-y-3 rounded-lg border p-4">
+          <p className="text-sm">
+            선택한 구절:{" "}
+            <span className="rounded bg-accent px-1.5 py-0.5 font-semibold text-accent-foreground">
+              “{pending.text}”
+            </span>
           </p>
-          <textarea
-            className="textarea"
+          <Textarea
             rows={3}
             autoFocus
             placeholder="이 구절에 대한 해석을 적어보세요"
             value={noteDraft}
             onChange={(e) => setNoteDraft(e.target.value)}
           />
-          <div className="annotation-editor-actions">
-            <button type="button" className="link" onClick={cancelAdd}>
+          <TagPicker value={tagDraft} onChange={setTagDraft} />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={cancelAdd}>
               취소
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="btn-primary"
+              size="sm"
               disabled={!noteDraft.trim()}
               onClick={confirmAdd}
             >
               해석 추가
-            </button>
+            </Button>
           </div>
         </div>
       )}

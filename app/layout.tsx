@@ -1,48 +1,54 @@
 import type { Metadata, Viewport } from "next";
-import { Black_Han_Sans, Gothic_A1 } from "next/font/google";
-import Link from "next/link";
+import localFont from "next/font/local";
 import "./globals.css";
 import GlobalNav from "@/components/GlobalNav";
-import MarqueeBar from "@/components/MarqueeBar";
+import SiteFooter from "@/components/SiteFooter";
+import { Toaster } from "@/components/ui/sonner";
 import { isSupabaseConfigured } from "@/lib/supabaseClient";
 import { siteDescription, siteName, siteUrl } from "@/lib/site";
 
-// 맥시멀리즘: 두껍고 시끄러운 포스터체(Black Han Sans)를 헤딩에, 개성 있는
-// 지오메트릭 산세리프(Gothic A1)를 본문에 쓴다. 둘 다 한글을 지원한다 —
-// 이 사이트 텍스트의 대부분이 한글이라, 예전에 썼던 Inter/Baloo 2/Nunito는
-// 사실 한글 글리프가 없어서 한글 텍스트에는 전혀 적용되지 않고 있었다.
-const headingFont = Black_Han_Sans({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-heading",
-});
-
-const bodyFont = Gothic_A1({
-  subsets: ["latin"],
-  weight: ["400", "500", "700", "900"],
-  variable: "--font-body",
+// Interop — Jang Haemin, OFL 라이선스 (fonts/interop/OFL.txt 참고).
+// Inter 제작자 Rasmus Andersson과 Google 크레딧이 들어간, 한글까지 지원하는
+// 산세리프. next/font/local로 직접 로드해서 자체 호스팅한다.
+const interop = localFont({
+  src: [
+    { path: "../fonts/interop/Interop-Regular.woff2", weight: "400", style: "normal" },
+    { path: "../fonts/interop/Interop-Medium.woff2", weight: "500", style: "normal" },
+    { path: "../fonts/interop/Interop-SemiBold.woff2", weight: "600", style: "normal" },
+    { path: "../fonts/interop/Interop-Bold.woff2", weight: "700", style: "normal" },
+    { path: "../fonts/interop/Interop-ExtraBold.woff2", weight: "800", style: "normal" },
+  ],
+  variable: "--font-interop",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: `${siteName} — 나만의 음악 해석 노트`,
+    default: `${siteName} — 인디 가사 해석 아카이브`,
     template: `%s · ${siteName}`,
   },
   description: siteDescription,
   applicationName: siteName,
-  keywords: ["음악 리뷰", "앨범 리뷰", "가사 해석", "음악 다이어리", "K-indie", "인디 락"],
+  keywords: [
+    "인디 가사",
+    "가사 해석",
+    "가사 구절",
+    "인디 음악",
+    "음악 커뮤니티",
+    "K-indie",
+  ],
   openGraph: {
     type: "website",
     locale: "ko_KR",
     siteName,
-    title: `${siteName} — 나만의 음악 해석 노트`,
+    title: `${siteName} — 인디 가사 해석 아카이브`,
     description: siteDescription,
     url: siteUrl,
   },
   twitter: {
     card: "summary_large_image",
-    title: `${siteName} — 나만의 음악 해석 노트`,
+    title: `${siteName} — 인디 가사 해석 아카이브`,
     description: siteDescription,
   },
   robots: {
@@ -52,7 +58,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ff2d55",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "oklch(0.99 0.004 75)" },
+    { media: "(prefers-color-scheme: dark)", color: "oklch(0.17 0.012 55)" },
+  ],
 };
 
 export default function RootLayout({
@@ -61,41 +70,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko" className={`${headingFont.variable} ${bodyFont.variable}`}>
-      <body>
-        <GlobalNav />
-        <MarqueeBar />
-        {!isSupabaseConfigured && (
-          <p className="config-warning text-caption">
-            ⚠️ Supabase 환경변수가 설정되지 않았어요. 글쓰기/저장이 동작하지
-            않습니다. Vercel 프로젝트 → Settings → Environment Variables에
-            NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY를 추가하고
-            다시 배포해주세요.
-          </p>
-        )}
-        <main>{children}</main>
-        <footer className="footer">
-          <div className="footer-inner">
-            <div className="footer-brand">
-              <span className="footer-logo">Liner Notes</span>
-              <p className="text-fine-print">나만의 음악 해석 노트</p>
-            </div>
-            <nav className="footer-links">
-              <Link href="/" className="text-caption">
-                홈
-              </Link>
-              <Link href="/browse" className="text-caption">
-                둘러보기
-              </Link>
-              <Link href="/write" className="text-caption">
-                새 글쓰기
-              </Link>
-            </nav>
-          </div>
-          <p className="text-fine-print footer-copyright">
-            © {new Date().getFullYear()} {siteName}
-          </p>
-        </footer>
+    <html lang="ko" className={interop.variable} suppressHydrationWarning>
+      <body className="font-sans antialiased">
+        <div className="flex min-h-screen flex-col">
+          <GlobalNav />
+          {!isSupabaseConfigured && (
+            <p className="bg-destructive/10 text-destructive border-b px-4 py-2 text-center text-sm font-medium">
+              ⚠️ Supabase 환경변수가 설정되지 않았어요. 글쓰기/저장이 동작하지
+              않습니다. Vercel 프로젝트 → Settings → Environment Variables에
+              NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY를
+              추가하고 다시 배포해주세요.
+            </p>
+          )}
+          <main className="flex-1">{children}</main>
+          <SiteFooter />
+        </div>
+        <Toaster position="bottom-center" />
       </body>
     </html>
   );

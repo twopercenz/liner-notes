@@ -1,99 +1,71 @@
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import EntryForm from "@/components/EntryForm";
-import {
-  Annotation,
-  AnnotationDraft,
-  Entry,
-  Track,
-  TrackAnnotation,
-  TrackDraft,
-} from "@/lib/types";
+import WorkForm from "@/components/WorkForm";
+import { PostDraft, TrackDraft, Work } from "@/lib/types";
 
 export const revalidate = 0;
+export const metadata = { title: "글 수정하기" };
 
-export default async function EditEntryPage({
+export default async function EditWorkPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { data: entry } = await supabase
-    .from("entries")
+  const { data: work } = await supabase
+    .from("works")
     .select("*")
     .eq("id", id)
     .single();
 
-  if (!entry) notFound();
+  if (!work) notFound();
 
-  const [{ data: annotations }, { data: tracks }] = await Promise.all([
-    supabase
-      .from("annotations")
-      .select("*")
-      .eq("entry_id", id)
-      .order("start_offset", { ascending: true }),
-    supabase
-      .from("tracks")
-      .select("*")
-      .eq("entry_id", id)
-      .order("created_at", { ascending: true }),
-  ]);
+  const { data: trackRows } = await supabase
+    .from("tracks")
+    .select("*")
+    .eq("work_id", id)
+    .order("created_at", { ascending: true });
 
-  const initialAnnotations: AnnotationDraft[] = (
-    (annotations ?? []) as Annotation[]
-  ).map((a) => ({
-    id: a.id,
-    start_offset: a.start_offset,
-    end_offset: a.end_offset,
-    quote: a.quote,
-    note: a.note,
-  }));
-
-  const trackRows = (tracks ?? []) as Track[];
-  let initialTracks: TrackDraft[] = trackRows.map((t) => ({
+  const tracks = trackRows ?? [];
+  let initialTracks: TrackDraft[] = tracks.map((t) => ({
     id: t.id,
     title: t.title,
     lyrics: t.lyrics ?? "",
-    annotations: [],
+    posts: [],
   }));
 
-  if (trackRows.length > 0) {
-    const { data: trackAnnotations } = await supabase
-      .from("track_annotations")
-      .select("*")
-      .in(
-        "track_id",
-        trackRows.map((t) => t.id)
-      )
+  if (tracks.length > 0) {
+    const trackIds = tracks.map((t) => t.id);
+    const { data: postRows } = await supabase
+      .from("posts")
+      .select("*, post_tags(tag:tags(name))")
+      .in("track_id", trackIds)
       .order("start_offset", { ascending: true });
 
-    const byTrackId = new Map<string, AnnotationDraft[]>();
-    for (const a of (trackAnnotations ?? []) as TrackAnnotation[]) {
-      const list = byTrackId.get(a.track_id) ?? [];
+    const byTrackId = new Map<string, PostDraft[]>();
+    for (const p of postRows ?? []) {
+      const list = byTrackId.get(p.track_id) ?? [];
       list.push({
-        id: a.id,
-        start_offset: a.start_offset,
-        end_offset: a.end_offset,
-        quote: a.quote,
-        note: a.note,
+        id: p.id,
+        start_offset: p.start_offset,
+        end_offset: p.end_offset,
+        quote: p.quote,
+        note: p.note,
+        tags: (p.post_tags ?? []).map((pt: { tag: { name: string } }) => pt.tag.name),
       });
-      byTrackId.set(a.track_id, list);
+      byTrackId.set(p.track_id, list);
     }
 
     initialTracks = initialTracks.map((t) => ({
       ...t,
-      annotations: byTrackId.get(t.id) ?? [],
+      posts: byTrackId.get(t.id) ?? [],
     }));
   }
 
   return (
-    <section className="page-form">
-      <h1 className="text-display-md">글 수정하기</h1>
-      <EntryForm
-        initial={entry as Entry}
-        initialAnnotations={initialAnnotations}
-        initialTracks={initialTracks}
-      />
-    </section>
+    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+      <h1 className="mb-6 text-2xl font-extrabold tracking-tight">글 수정하기</h1>
+      <WorkForm initial={work as Work} initialTracks={initialTracks} />
+    </div>
   );
 }
