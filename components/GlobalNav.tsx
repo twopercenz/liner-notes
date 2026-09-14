@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Search, PenSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import ThemeToggle from "@/components/ThemeToggle";
 import { siteName } from "@/lib/site";
 
 export default function GlobalNav() {
@@ -34,6 +35,7 @@ export default function GlobalNav() {
               글쓰기
             </Link>
           </Button>
+          <ThemeToggle />
         </nav>
       </div>
 

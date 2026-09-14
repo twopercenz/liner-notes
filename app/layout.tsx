@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import GlobalNav from "@/components/GlobalNav";
 import SiteFooter from "@/components/SiteFooter";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { isSupabaseConfigured } from "@/lib/supabaseClient";
 import { siteDescription, siteName, siteUrl } from "@/lib/site";
@@ -72,20 +73,27 @@ export default function RootLayout({
   return (
     <html lang="ko" className={interop.variable} suppressHydrationWarning>
       <body className="font-sans antialiased">
-        <div className="flex min-h-screen flex-col">
-          <GlobalNav />
-          {!isSupabaseConfigured && (
-            <p className="bg-destructive/10 text-destructive border-b px-4 py-2 text-center text-sm font-medium">
-              ⚠️ Supabase 환경변수가 설정되지 않았어요. 글쓰기/저장이 동작하지
-              않습니다. Vercel 프로젝트 → Settings → Environment Variables에
-              NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY를
-              추가하고 다시 배포해주세요.
-            </p>
-          )}
-          <main className="flex-1">{children}</main>
-          <SiteFooter />
-        </div>
-        <Toaster position="bottom-center" />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <div className="flex min-h-screen flex-col">
+            <GlobalNav />
+            {!isSupabaseConfigured && (
+              <p className="bg-destructive/10 text-destructive border-b px-4 py-2 text-center text-sm font-medium">
+                ⚠️ Supabase 환경변수가 설정되지 않았어요. 글쓰기/저장이 동작하지
+                않습니다. Vercel 프로젝트 → Settings → Environment Variables에
+                NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY를
+                추가하고 다시 배포해주세요.
+              </p>
+            )}
+            <main className="flex-1">{children}</main>
+            <SiteFooter />
+          </div>
+          <Toaster position="bottom-center" />
+        </ThemeProvider>
       </body>
     </html>
   );
