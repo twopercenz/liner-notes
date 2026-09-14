@@ -3,8 +3,7 @@ import { ImageResponse } from "next/og";
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
 
-// 브라우저 탭 파비콘. 작은 사이즈라 디테일을 최소화하고
-// clay 느낌의 그라데이션 배경 + 비닐 레코드 실루엣만 남긴다.
+// 브라우저 탭 파비콘. 맥시멀리즘 팔레트: 핑크 배경 + 검정 테두리의 비닐 레코드.
 export default function Icon() {
   return new ImageResponse(
     (
@@ -15,8 +14,9 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(145deg, #ffab8a, #ff7a59)",
-          borderRadius: 8,
+          background: "#ff2d55",
+          border: "2px solid #14110f",
+          borderRadius: 6,
         }}
       >
         <div
@@ -24,7 +24,8 @@ export default function Icon() {
             width: 20,
             height: 20,
             borderRadius: "50%",
-            background: "#fff6ec",
+            background: "#ffd400",
+            border: "2px solid #14110f",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -35,7 +36,7 @@ export default function Icon() {
               width: 6,
               height: 6,
               borderRadius: "50%",
-              background: "#ff7a59",
+              background: "#14110f",
             }}
           />
         </div>

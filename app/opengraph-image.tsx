@@ -17,28 +17,43 @@ export default function OpengraphImage() {
           alignItems: "center",
           justifyContent: "center",
           gap: 32,
-          background: "linear-gradient(160deg, #fff6ec 0%, #ffe4d3 100%)",
+          background: "#2f5bff",
+          backgroundImage:
+            "radial-gradient(#14110f 2px, transparent 2px)",
+          backgroundSize: "28px 28px",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 28,
+            background: "#fdf3df",
+            border: "6px solid #14110f",
+            borderRadius: 32,
+            padding: "36px 56px",
+            boxShadow: "16px 16px 0 #14110f",
+          }}
+        >
           <div
             style={{
               width: 120,
               height: 120,
               borderRadius: "50%",
-              background: "linear-gradient(145deg, #ffab8a, #ff7a59)",
+              background: "#ff2d55",
+              border: "6px solid #14110f",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "10px 10px 24px rgba(200,110,70,0.25)",
             }}
           >
             <div
               style={{
-                width: 66,
-                height: 66,
+                width: 64,
+                height: 64,
                 borderRadius: "50%",
-                background: "#fff6ec",
+                background: "#ffd400",
+                border: "4px solid #14110f",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -46,19 +61,19 @@ export default function OpengraphImage() {
             >
               <div
                 style={{
-                  width: 20,
-                  height: 20,
+                  width: 18,
+                  height: 18,
                   borderRadius: "50%",
-                  background: "#ff7a59",
+                  background: "#14110f",
                 }}
               />
             </div>
           </div>
           <div
             style={{
-              fontSize: 96,
+              fontSize: 92,
               fontWeight: 800,
-              color: "#4a2f22",
+              color: "#14110f",
               display: "flex",
             }}
           >
@@ -67,11 +82,15 @@ export default function OpengraphImage() {
         </div>
         <div
           style={{
-            fontSize: 32,
-            color: "#8a6a56",
+            fontSize: 28,
+            fontWeight: 700,
+            color: "#fdf3df",
             display: "flex",
-            maxWidth: 860,
+            maxWidth: 820,
             textAlign: "center",
+            background: "#14110f",
+            padding: "10px 24px",
+            borderRadius: 999,
           }}
         >
           {siteDescription}

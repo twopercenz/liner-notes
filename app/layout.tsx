@@ -1,23 +1,25 @@
 import type { Metadata, Viewport } from "next";
-import { Baloo_2, Nunito } from "next/font/google";
+import { Black_Han_Sans, Gothic_A1 } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import GlobalNav from "@/components/GlobalNav";
+import MarqueeBar from "@/components/MarqueeBar";
 import { isSupabaseConfigured } from "@/lib/supabaseClient";
 import { siteDescription, siteName, siteUrl } from "@/lib/site";
 
-// 클레이모피즘 톤에 맞춰 큼직하고 둥근 느낌의 헤딩용 폰트(Baloo 2)와
-// 가독성 좋은 본문용 폰트(Nunito)를 함께 쓴다. 둘 다 둥근 글자 끝이
-// 특징이라 카드/버튼의 말랑한 그림자와 잘 어울린다.
-const headingFont = Baloo_2({
+// 맥시멀리즘: 두껍고 시끄러운 포스터체(Black Han Sans)를 헤딩에, 개성 있는
+// 지오메트릭 산세리프(Gothic A1)를 본문에 쓴다. 둘 다 한글을 지원한다 —
+// 이 사이트 텍스트의 대부분이 한글이라, 예전에 썼던 Inter/Baloo 2/Nunito는
+// 사실 한글 글리프가 없어서 한글 텍스트에는 전혀 적용되지 않고 있었다.
+const headingFont = Black_Han_Sans({
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
+  weight: "400",
   variable: "--font-heading",
 });
 
-const bodyFont = Nunito({
+const bodyFont = Gothic_A1({
   subsets: ["latin"],
-  weight: ["400", "600", "700", "800"],
+  weight: ["400", "500", "700", "900"],
   variable: "--font-body",
 });
 
@@ -50,7 +52,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ff7a59",
+  themeColor: "#ff2d55",
 };
 
 export default function RootLayout({
@@ -62,6 +64,7 @@ export default function RootLayout({
     <html lang="ko" className={`${headingFont.variable} ${bodyFont.variable}`}>
       <body>
         <GlobalNav />
+        <MarqueeBar />
         {!isSupabaseConfigured && (
           <p className="config-warning text-caption">
             ⚠️ Supabase 환경변수가 설정되지 않았어요. 글쓰기/저장이 동작하지

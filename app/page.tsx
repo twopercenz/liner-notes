@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import EntryCard from "@/components/EntryCard";
-import ClayShapes from "@/components/ClayShapes";
+import PopShapes from "@/components/PopShapes";
 import { Entry } from "@/lib/types";
 
 export const revalidate = 0;
@@ -21,7 +21,7 @@ export default async function LandingPage() {
     <>
       <section className="hero">
         <div className="hero-scene" aria-hidden="true">
-          <ClayShapes />
+          <PopShapes />
         </div>
         <div className="hero-content">
           <h1 className="text-hero-display">Liner Notes</h1>

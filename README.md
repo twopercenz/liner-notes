@@ -8,8 +8,8 @@ Next.js + Supabase로 만들어져 누구나 접속해서 글을 쓰고 읽을 �
 - **곡/앨범 검색 자동완성**: iTunes Search API (무료, API 키 불필요)
 - **가사**: lrclib.net (무료, API 키 불필요)
 - **배포**: Vercel
-- **디자인**: 클레이모피즘(claymorphism) — 따뜻한 크림/코랄 팔레트 + 이중톤(raised/pressed) 그림자로 말랑한 느낌 (원래 참고했던 `DESIGN.md`의 Apple 스타일에서 전환)
-- **3D 오브젝트**: 랜딩 히어로에 떠 있는 clay 도형들. 순수 CSS(`perspective` + `rotateX/Y`)로 구현 — WebGL 라이브러리 없이도 진짜 3D처럼 보임
+- **디자인**: 맥시멀리즘(maximalism) — 원색 클래시(핑크/파랑/노랑/보라), 두꺼운 검정 테두리 + 하드 섀도우, 큼직한 포스터체(Black Han Sans) 타이포, 쉬지 않고 흐르는 마키 배너 (Apple 스타일 → 클레이모피즘을 거쳐 최종적으로 전환)
+- **3D 오브젝트**: 랜딩 히어로에 떠 있는 팝아트 스티커 느낌의 도형들. 순수 CSS(`perspective` + `rotateX/Y`)로 구현 — WebGL 라이브러리 없이도 진짜 3D처럼 보임
 - **SEO/공유**: Open Graph 이미지, 파비콘/앱 아이콘, `sitemap.xml`, `robots.txt`, PWA `manifest.webmanifest`까지 자동 생성
 
 ## 1. Supabase 프로젝트 만들기
@@ -92,14 +92,15 @@ liner-notes/
 │   ├── api/lyrics/route.ts    # lrclib.net 프록시 (가사 가져오기)
 │   ├── api/tracklist/route.ts # iTunes Lookup 프록시 (앨범의 트랙 목록 가져오기)
 │   ├── layout.tsx
-│   ├── globals.css            # 클레이모피즘 디자인 토큰
+│   ├── globals.css            # 맥시멀리즘 디자인 토큰
 │   ├── icon.tsx / apple-icon.tsx / opengraph-image.tsx  # 아이콘 · 공유 미리보기 이미지 (자동 생성)
 │   ├── manifest.ts            # PWA 매니페스트
 │   ├── robots.ts / sitemap.ts # 검색엔진용
 │   └── not-found.tsx          # 커스텀 404
 ├── components/
 │   ├── GlobalNav.tsx
-│   ├── ClayShapes.tsx         # 랜딩 히어로의 CSS 3D 오브젝트
+│   ├── PopShapes.tsx          # 랜딩 히어로의 CSS 3D 오브젝트
+│   ├── MarqueeBar.tsx         # 흐르는 마키 배너
 │   ├── EntryBrowser.tsx       # 필터/검색 + 그리드
 │   ├── EntryCard.tsx
 │   ├── EntryForm.tsx          # 작성/수정 폼 + 검색 자동완성 + 가사/해석
