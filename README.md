@@ -69,7 +69,8 @@ npm run dev
 ```
 liner-notes/
 ├── app/
-│   ├── page.tsx              # 홈: 히어로 + 필터/검색 + 카드 그리드
+│   ├── page.tsx              # 랜딩 페이지: 히어로 + 최근 리뷰 미리보기
+│   ├── browse/page.tsx        # 메인 페이지: 전체 목록 + 필터/검색
 │   ├── write/page.tsx         # 새 글쓰기
 │   ├── write/[id]/page.tsx    # 글 수정
 │   ├── entry/[id]/page.tsx    # 상세 보기 (가사 + 구절별 해석 표시)

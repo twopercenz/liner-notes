@@ -13,7 +13,7 @@ export default function DeleteButton({ id }: { id: string }) {
       alert("삭제에 실패했어요: " + error.message);
       return;
     }
-    router.push("/");
+    router.push("/browse");
     router.refresh();
   }
 

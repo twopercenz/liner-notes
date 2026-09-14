@@ -287,7 +287,7 @@ export default function EntryForm({
         await saveAnnotations(data.id);
         await saveTracks(data.id);
       }
-      router.push(data ? `/entry/${data.id}` : "/");
+      router.push(data ? `/entry/${data.id}` : "/browse");
       router.refresh();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

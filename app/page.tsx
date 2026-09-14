@@ -1,21 +1,20 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import EntryBrowser from "@/components/EntryBrowser";
+import EntryCard from "@/components/EntryCard";
 import { Entry } from "@/lib/types";
 
 export const revalidate = 0;
 
-export default async function HomePage() {
-  const { data, error } = await supabase
+// 랜딩 페이지: 히어로 + 최근 리뷰 미리보기만 보여준다.
+// 실제 전체 목록/필터/검색은 /browse(메인 페이지)에 있다.
+export default async function LandingPage() {
+  const { data } = await supabase
     .from("entries")
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(4);
 
-  if (error) {
-    console.error("entries 조회 실패:", error.message);
-  }
-
-  const entries = (data ?? []) as Entry[];
+  const recent = (data ?? []) as Entry[];
 
   return (
     <>
@@ -28,13 +27,25 @@ export default async function HomePage() {
           <Link href="/write" className="btn-primary">
             새 글쓰기
           </Link>
-          <a href="#browse" className="btn-secondary-pill">
+          <Link href="/browse" className="btn-secondary-pill">
             둘러보기
-          </a>
+          </Link>
         </div>
       </section>
 
-      <EntryBrowser entries={entries} />
+      {recent.length > 0 && (
+        <section className="product-tile product-tile--parchment">
+          <h2 className="text-display-md">최근 올라온 리뷰</h2>
+          <div className="entry-grid entry-grid--preview">
+            {recent.map((entry) => (
+              <EntryCard key={entry.id} entry={entry} />
+            ))}
+          </div>
+          <Link href="/browse" className="btn-secondary-pill">
+            전체 보기
+          </Link>
+        </section>
+      )}
     </>
   );
 }

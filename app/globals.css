@@ -209,6 +209,23 @@ button {
   letter-spacing: -0.12px;
 }
 
+.global-nav-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.global-nav-link {
+  color: var(--color-body-on-dark);
+  font-family: var(--font-text);
+  font-size: 12px;
+  letter-spacing: -0.12px;
+}
+
+.global-nav-link:hover {
+  color: var(--color-primary-on-dark);
+}
+
 /* ==========================================================================
    Buttons & links
    ========================================================================== */
@@ -411,7 +428,22 @@ button {
   gap: var(--space-lg);
   padding: var(--space-xl) var(--space-lg) var(--space-xxl);
   max-width: 1440px;
+  width: 100%;
   margin: 0 auto;
+  text-align: left;
+}
+
+/* 랜딩 페이지의 "최근 올라온 리뷰" 미리보기는 카드 몇 개만 보여주면 되니
+   전체 목록용 패딩 없이, product-tile 안에서 자연스럽게 붙는다. */
+.entry-grid--preview {
+  padding: 0;
+  max-width: 720px;
+}
+
+.page-header {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-lg) 0;
 }
 
 .store-utility-card {

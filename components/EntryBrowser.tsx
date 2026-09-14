@@ -29,7 +29,7 @@ export default function EntryBrowser({ entries }: { entries: Entry[] }) {
   }, [entries, filter, query]);
 
   return (
-    <section id="browse">
+    <section>
       <div className="sub-nav-frosted">
         <div className="chip-row">
           {FILTERS.map((f) => (
