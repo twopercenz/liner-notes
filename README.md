@@ -8,7 +8,9 @@ Next.js + Supabase로 만들어져 누구나 접속해서 글을 쓰고 읽을 �
 - **곡/앨범 검색 자동완성**: iTunes Search API (무료, API 키 불필요)
 - **가사**: lrclib.net (무료, API 키 불필요)
 - **배포**: Vercel
-- **디자인**: `DESIGN.md`(Apple 스타일 디자인 시스템)의 컬러/타이포/컴포넌트 토큰을 그대로 구현
+- **디자인**: 클레이모피즘(claymorphism) — 따뜻한 크림/코랄 팔레트 + 이중톤(raised/pressed) 그림자로 말랑한 느낌 (원래 참고했던 `DESIGN.md`의 Apple 스타일에서 전환)
+- **3D 오브젝트**: 랜딩 히어로에 떠 있는 clay 도형들. 순수 CSS(`perspective` + `rotateX/Y`)로 구현 — WebGL 라이브러리 없이도 진짜 3D처럼 보임
+- **SEO/공유**: Open Graph 이미지, 파비콘/앱 아이콘, `sitemap.xml`, `robots.txt`, PWA `manifest.webmanifest`까지 자동 생성
 
 ## 1. Supabase 프로젝트 만들기
 
@@ -53,6 +55,16 @@ npm run dev
 4. **Deploy** 클릭 → `https://liner-notes-<random>.vercel.app` 같은 주소로 배포 완료
 5. 이후에는 `main` 브랜치에 푸시할 때마다 자동으로 재배포됩니다
 
+## 5. (선택) 커스텀 도메인 연결하기
+
+1. 원하는 도메인을 구매 (가비아, Namecheap, Vercel Domains 등 아무 곳이나)
+2. Vercel 프로젝트 → **Settings → Domains** → 구매한 도메인 입력 → 안내되는 DNS 레코드(A/CNAME)를
+   도메인 등록업체 설정에 추가
+3. DNS가 반영되면(보통 몇 분~몇 시간) Vercel이 자동으로 SSL 인증서까지 발급해줌
+4. Vercel 프로젝트 **Environment Variables**에 `NEXT_PUBLIC_SITE_URL=https://내도메인.com` 추가하고 재배포
+   - 이 값은 `lib/site.ts`에서 Open Graph 링크, `sitemap.xml`, `robots.txt`의 기준 주소로 쓰입니다.
+   - 설정 안 해도 사이트는 정상 동작하고, 그냥 Vercel 기본 도메인이 대신 쓰입니다.
+
 ## 기능
 
 - 앨범 / EP / 싱글 / 곡 단위로 리뷰·감상평 작성
@@ -63,6 +75,8 @@ npm run dev
 - 별점
 - 수정/삭제
 - 모든 데이터는 Supabase에 저장되어 어느 기기에서 접속해도 동일하게 보임 (로그인 없이 누구나 쓰기 가능)
+- 랜딩 페이지(`/`)에 3D clay 오브젝트가 떠 있는 히어로, 최근 리뷰 미리보기
+- 커스텀 파비콘/앱 아이콘, 링크 공유 시 미리보기 카드(Open Graph), 검색엔진용 sitemap/robots
 
 ## 파일 구조
 
@@ -78,9 +92,14 @@ liner-notes/
 │   ├── api/lyrics/route.ts    # lrclib.net 프록시 (가사 가져오기)
 │   ├── api/tracklist/route.ts # iTunes Lookup 프록시 (앨범의 트랙 목록 가져오기)
 │   ├── layout.tsx
-│   └── globals.css            # DESIGN.md 디자인 토큰 구현
+│   ├── globals.css            # 클레이모피즘 디자인 토큰
+│   ├── icon.tsx / apple-icon.tsx / opengraph-image.tsx  # 아이콘 · 공유 미리보기 이미지 (자동 생성)
+│   ├── manifest.ts            # PWA 매니페스트
+│   ├── robots.ts / sitemap.ts # 검색엔진용
+│   └── not-found.tsx          # 커스텀 404
 ├── components/
 │   ├── GlobalNav.tsx
+│   ├── ClayShapes.tsx         # 랜딩 히어로의 CSS 3D 오브젝트
 │   ├── EntryBrowser.tsx       # 필터/검색 + 그리드
 │   ├── EntryCard.tsx
 │   ├── EntryForm.tsx          # 작성/수정 폼 + 검색 자동완성 + 가사/해석
@@ -90,14 +109,14 @@ liner-notes/
 │   └── DeleteButton.tsx
 ├── lib/
 │   ├── supabaseClient.ts
+│   ├── site.ts                # 배포 도메인 등 사이트 전역 상수
 │   ├── types.ts
 │   └── textOffset.ts          # 텍스트 선택 ↔ 문자 오프셋 변환 유틸
-├── supabase/
-│   ├── schema.sql             # 새 프로젝트용 전체 스키마
-│   └── migrations/
-│       ├── 002_lyrics_and_annotations.sql  # 가사/해석 기능 추가
-│       └── 003_tracks.sql                  # 앨범 등의 곡별(트랙) 가사/해석 추가
-└── DESIGN.md                  # 참고한 Apple 스타일 디자인 시스템 문서
+└── supabase/
+    ├── schema.sql             # 새 프로젝트용 전체 스키마
+    └── migrations/
+        ├── 002_lyrics_and_annotations.sql  # 가사/해석 기능 추가
+        └── 003_tracks.sql                  # 앨범 등의 곡별(트랙) 가사/해석 추가
 ```
 
 ## 구절별 해석은 어떻게 저장되나요?

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import EntryCard from "@/components/EntryCard";
+import ClayShapes from "@/components/ClayShapes";
 import { Entry } from "@/lib/types";
 
 export const revalidate = 0;
@@ -18,18 +19,23 @@ export default async function LandingPage() {
 
   return (
     <>
-      <section className="product-tile product-tile--dark">
-        <h1 className="text-hero-display">Liner Notes</h1>
-        <p className="text-lead">
-          앨범, 싱글, EP, 곡에 대한 리뷰와 해석을 기록하는 온라인 다이어리
-        </p>
-        <div className="hero-actions">
-          <Link href="/write" className="btn-primary">
-            새 글쓰기
-          </Link>
-          <Link href="/browse" className="btn-secondary-pill">
-            둘러보기
-          </Link>
+      <section className="hero">
+        <div className="hero-scene" aria-hidden="true">
+          <ClayShapes />
+        </div>
+        <div className="hero-content">
+          <h1 className="text-hero-display">Liner Notes</h1>
+          <p className="text-lead">
+            앨범, 싱글, EP, 곡에 대한 리뷰와 해석을 기록하는 온라인 다이어리
+          </p>
+          <div className="hero-actions">
+            <Link href="/write" className="btn-primary">
+              새 글쓰기
+            </Link>
+            <Link href="/browse" className="btn-secondary-pill">
+              둘러보기
+            </Link>
+          </div>
         </div>
       </section>
 
