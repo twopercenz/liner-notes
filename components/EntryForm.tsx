@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { Entry, EntryType, TYPE_LABEL } from "@/lib/types";
+import { AnnotationDraft, Entry, EntryType, TYPE_LABEL } from "@/lib/types";
+import LyricsAnnotator from "./LyricsAnnotator";
 
 interface SearchResult {
   appleMusicId: string;
@@ -15,7 +16,13 @@ interface SearchResult {
 
 const TYPES: EntryType[] = ["album", "ep", "single", "song"];
 
-export default function EntryForm({ initial }: { initial?: Entry }) {
+export default function EntryForm({
+  initial,
+  initialAnnotations = [],
+}: {
+  initial?: Entry;
+  initialAnnotations?: AnnotationDraft[];
+}) {
   const router = useRouter();
 
   const [type, setType] = useState<EntryType>(initial?.type ?? "album");
@@ -28,9 +35,17 @@ export default function EntryForm({ initial }: { initial?: Entry }) {
   );
   const [rating, setRating] = useState(initial?.rating ?? 0);
   const [review, setReview] = useState(initial?.review ?? "");
+  // 하위호환: 줄 단위 해석 이전에 쓰던 자유 텍스트 해석. 예전 글에 값이 있으면
+  // 계속 편집할 수 있게 남겨두고, 없는 글에는 아예 보여주지 않는다.
   const [interpretation, setInterpretation] = useState(
     initial?.interpretation ?? ""
   );
+
+  const [lyrics, setLyrics] = useState(initial?.lyrics ?? "");
+  const [annotations, setAnnotations] =
+    useState<AnnotationDraft[]>(initialAnnotations);
+  const [fetchingLyrics, setFetchingLyrics] = useState(false);
+  const [lyricsError, setLyricsError] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -90,6 +105,85 @@ export default function EntryForm({ initial }: { initial?: Entry }) {
     setResults([]);
   }
 
+  // 가사를 (새로 가져오거나 직접 입력해서) 바꾸면, 이미 달아둔 해석들의
+  // 문자 위치(offset)가 더 이상 맞지 않게 되므로 확인 후 함께 초기화한다.
+  function confirmClearAnnotationsIfNeeded() {
+    if (annotations.length === 0) return true;
+    return confirm(
+      "가사를 바꾸면 지금까지 추가한 구절별 해석이 모두 사라져요. 계속할까요?"
+    );
+  }
+
+  function handleLyricsChange(value: string) {
+    if (value === lyrics) return;
+    if (!confirmClearAnnotationsIfNeeded()) return;
+    setAnnotations([]);
+    setLyrics(value);
+  }
+
+  async function fetchLyrics() {
+    if (!artist.trim() || !title.trim()) return;
+    if (!confirmClearAnnotationsIfNeeded()) return;
+
+    setFetchingLyrics(true);
+    setLyricsError("");
+    try {
+      const res = await fetch(
+        `/api/lyrics?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`
+      );
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.lyrics) {
+        setLyricsError((data && data.error) || "가사를 찾지 못했어요.");
+        return;
+      }
+      setAnnotations([]);
+      setLyrics(data.lyrics);
+    } catch {
+      setLyricsError("가사 조회에 실패했어요. 네트워크 상태를 확인해주세요.");
+    } finally {
+      setFetchingLyrics(false);
+    }
+  }
+
+  function handleAddAnnotation(draft: {
+    start_offset: number;
+    end_offset: number;
+    quote: string;
+    note: string;
+  }) {
+    setAnnotations((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), ...draft },
+    ]);
+  }
+
+  function handleDeleteAnnotation(id: string) {
+    setAnnotations((prev) => prev.filter((a) => a.id !== id));
+  }
+
+  // 매번 전체를 지우고 다시 넣는 단순한 전략. 개인 프로젝트 규모에서는
+  // 어떤 해석이 새로 생기고 지워졌는지 서버와 diff를 맞추는 것보다 훨씬 간단하고,
+  // 저장 버튼을 누른 시점의 화면 상태를 그대로 진실로 삼을 수 있다.
+  async function saveAnnotations(entryId: string) {
+    const { error: delErr } = await supabase
+      .from("annotations")
+      .delete()
+      .eq("entry_id", entryId);
+    if (delErr) throw delErr;
+
+    if (annotations.length === 0) return;
+
+    const rows = annotations.map((a) => ({
+      entry_id: entryId,
+      start_offset: a.start_offset,
+      end_offset: a.end_offset,
+      quote: a.quote,
+      note: a.note,
+    }));
+    const { error: insErr } = await supabase.from("annotations").insert(rows);
+    if (insErr) throw insErr;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!artist.trim() || !title.trim()) {
@@ -110,37 +204,39 @@ export default function EntryForm({ initial }: { initial?: Entry }) {
       rating,
       review: review.trim() || null,
       interpretation: interpretation.trim() || null,
+      lyrics: lyrics.trim() || null,
     };
 
-    if (initial) {
-      const { error: dbError } = await supabase
-        .from("entries")
-        .update(payload)
-        .eq("id", initial.id);
-      setSaving(false);
-      if (dbError) {
-        setError("저장에 실패했어요: " + dbError.message);
+    try {
+      if (initial) {
+        const { error: dbError } = await supabase
+          .from("entries")
+          .update(payload)
+          .eq("id", initial.id);
+        if (dbError) throw dbError;
+
+        await saveAnnotations(initial.id);
+        router.push(`/entry/${initial.id}`);
+        router.refresh();
         return;
       }
-      router.push(`/entry/${initial.id}`);
+
+      const { data, error: dbError } = await supabase
+        .from("entries")
+        .insert(payload)
+        .select()
+        .single();
+      if (dbError) throw dbError;
+
+      if (data) await saveAnnotations(data.id);
+      router.push(data ? `/entry/${data.id}` : "/");
       router.refresh();
-      return;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError("저장에 실패했어요: " + message);
+    } finally {
+      setSaving(false);
     }
-
-    const { data, error: dbError } = await supabase
-      .from("entries")
-      .insert(payload)
-      .select()
-      .single();
-    setSaving(false);
-
-    if (dbError) {
-      setError("저장에 실패했어요: " + dbError.message);
-      return;
-    }
-
-    router.push(data ? `/entry/${data.id}` : "/");
-    router.refresh();
   }
 
   return (
@@ -309,19 +405,64 @@ export default function EntryForm({ initial }: { initial?: Entry }) {
         />
       </div>
 
+      {initial?.interpretation && (
+        <div className="form-group">
+          <label className="text-caption-strong" htmlFor="interpretation">
+            이전 해석{" "}
+            <span className="text-fine-print">
+              (구절별 해석 기능이 생기기 전에 쓴 글이에요. 계속 두거나, 아래
+              가사에 구절별로 다시 옮겨 적어도 좋아요)
+            </span>
+          </label>
+          <textarea
+            id="interpretation"
+            className="textarea"
+            rows={4}
+            value={interpretation}
+            onChange={(e) => setInterpretation(e.target.value)}
+          />
+        </div>
+      )}
+
       <div className="form-group">
-        <label className="text-caption-strong" htmlFor="interpretation">
-          해석
+        <label className="text-caption-strong" htmlFor="lyrics">
+          가사
         </label>
+        <div className="lyrics-fetch-row">
+          <button
+            type="button"
+            className="btn-secondary-pill"
+            onClick={fetchLyrics}
+            disabled={fetchingLyrics || !artist.trim() || !title.trim()}
+          >
+            {fetchingLyrics ? "가져오는 중…" : "가사 자동으로 가져오기"}
+          </button>
+          {lyricsError && (
+            <span className="text-caption form-error">{lyricsError}</span>
+          )}
+        </div>
         <textarea
-          id="interpretation"
+          id="lyrics"
           className="textarea"
-          rows={5}
-          value={interpretation}
-          onChange={(e) => setInterpretation(e.target.value)}
-          placeholder="가사, 컨셉, 사운드가 표현하는 것 등을 해석해보세요"
+          rows={8}
+          value={lyrics}
+          onChange={(e) => handleLyricsChange(e.target.value)}
+          placeholder="가사를 붙여넣거나, 위 버튼으로 자동으로 가져와보세요"
         />
       </div>
+
+      {lyrics.trim() && (
+        <div className="form-group">
+          <label className="text-caption-strong">구절별 해석</label>
+          <LyricsAnnotator
+            lyrics={lyrics}
+            annotations={annotations}
+            editable
+            onAdd={handleAddAnnotation}
+            onDelete={handleDeleteAnnotation}
+          />
+        </div>
+      )}
 
       {error && <p className="text-caption form-error">{error}</p>}
 

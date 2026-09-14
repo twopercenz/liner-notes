@@ -591,6 +591,83 @@ button {
   color: var(--color-danger);
 }
 
+/* ==========================================================================
+   Lyrics & annotations
+   ========================================================================== */
+
+.lyrics-hint {
+  margin-bottom: var(--space-xs);
+}
+
+.lyrics-text {
+  font-family: var(--font-text);
+  font-size: 17px;
+  line-height: 1.7;
+  letter-spacing: -0.374px;
+  white-space: pre-wrap;
+  background: var(--color-canvas-parchment);
+  border-radius: var(--radius-sm);
+  padding: var(--space-lg);
+  user-select: text;
+}
+
+.lyric-highlight {
+  background: rgba(0, 102, 204, 0.14);
+  border-bottom: 2px solid var(--color-primary);
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.lyric-highlight:hover {
+  background: rgba(0, 102, 204, 0.22);
+}
+
+.lyric-highlight--open {
+  background: rgba(0, 102, 204, 0.28);
+}
+
+.lyric-note {
+  display: block;
+  margin: var(--space-xs) 0 var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-canvas);
+  border-left: 3px solid var(--color-primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.lyric-note-delete {
+  display: block;
+  margin-top: var(--space-xs);
+}
+
+.annotation-editor {
+  margin-top: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.annotation-editor-quote {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+.annotation-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-md);
+}
+
+.lyrics-fetch-row {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
 .config-warning {
   background: #fff4ed;
   color: var(--color-danger);

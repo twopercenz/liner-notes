@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import DeleteButton from "@/components/DeleteButton";
-import { Entry, TYPE_LABEL } from "@/lib/types";
+import LyricsAnnotator from "@/components/LyricsAnnotator";
+import { Annotation, Entry, TYPE_LABEL } from "@/lib/types";
 
 export const revalidate = 0;
 
@@ -20,6 +21,14 @@ export default async function EntryDetailPage({
 
   if (!data) notFound();
   const entry = data as Entry;
+
+  const { data: annotations } = await supabase
+    .from("annotations")
+    .select("*")
+    .eq("entry_id", id)
+    .order("start_offset", { ascending: true });
+
+  const hasNotes = Boolean(entry.review || entry.interpretation || entry.lyrics);
 
   return (
     <section className="product-tile product-tile--light entry-detail">
@@ -55,10 +64,23 @@ export default async function EntryDetailPage({
         </div>
       )}
 
-      {!entry.review && !entry.interpretation && (
-        <p className="text-caption">
-          아직 작성된 감상평/해석이 없어요.
-        </p>
+      {entry.lyrics && (
+        <div className="detail-section">
+          <h2 className="text-caption-strong">
+            가사{" "}
+            <span className="text-fine-print">
+              (밑줄 친 구절을 눌러보세요)
+            </span>
+          </h2>
+          <LyricsAnnotator
+            lyrics={entry.lyrics}
+            annotations={(annotations ?? []) as Annotation[]}
+          />
+        </div>
+      )}
+
+      {!hasNotes && (
+        <p className="text-caption">아직 작성된 감상평/해석이 없어요.</p>
       )}
 
       <div className="detail-actions">
