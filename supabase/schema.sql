@@ -72,3 +72,67 @@ create policy "public can delete annotations"
   using (true);
 
 create index if not exists annotations_entry_id_idx on annotations (entry_id);
+
+-- 앨범/EP/싱글처럼 곡이 여러 개인 항목을 위한 트랙 목록.
+-- entries.lyrics/annotations는 "곡" 타입처럼 항목 전체가 노래 한 곡일 때 쓰고,
+-- 앨범 안의 개별 곡마다 가사를 따로 가져오고 해석하고 싶을 때는 이 테이블을 쓴다.
+create table if not exists tracks (
+  id uuid primary key default gen_random_uuid(),
+  entry_id uuid not null references entries(id) on delete cascade,
+  title text not null,
+  track_number int,
+  lyrics text,
+  created_at timestamptz not null default now()
+);
+
+alter table tracks enable row level security;
+
+create policy "public can read tracks"
+  on tracks for select
+  using (true);
+
+create policy "public can insert tracks"
+  on tracks for insert
+  with check (true);
+
+create policy "public can update tracks"
+  on tracks for update
+  using (true);
+
+create policy "public can delete tracks"
+  on tracks for delete
+  using (true);
+
+create index if not exists tracks_entry_id_idx on tracks (entry_id);
+
+-- 트랙별 가사 구절 하이라이트 + 해석. annotations 테이블과 구조는 같지만
+-- entries.lyrics가 아니라 tracks.lyrics 문자열 기준 오프셋이라 테이블을 분리했다.
+create table if not exists track_annotations (
+  id uuid primary key default gen_random_uuid(),
+  track_id uuid not null references tracks(id) on delete cascade,
+  start_offset int not null,
+  end_offset int not null,
+  quote text not null,
+  note text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table track_annotations enable row level security;
+
+create policy "public can read track_annotations"
+  on track_annotations for select
+  using (true);
+
+create policy "public can insert track_annotations"
+  on track_annotations for insert
+  with check (true);
+
+create policy "public can update track_annotations"
+  on track_annotations for update
+  using (true);
+
+create policy "public can delete track_annotations"
+  on track_annotations for delete
+  using (true);
+
+create index if not exists track_annotations_track_id_idx on track_annotations (track_id);

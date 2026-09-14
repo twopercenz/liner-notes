@@ -3,8 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { AnnotationDraft, Entry, EntryType, TYPE_LABEL } from "@/lib/types";
+import {
+  AnnotationDraft,
+  Entry,
+  EntryType,
+  TYPE_LABEL,
+  TrackDraft,
+} from "@/lib/types";
 import LyricsAnnotator from "./LyricsAnnotator";
+import TrackList from "./TrackList";
 
 interface SearchResult {
   appleMusicId: string;
@@ -19,9 +26,11 @@ const TYPES: EntryType[] = ["album", "ep", "single", "song"];
 export default function EntryForm({
   initial,
   initialAnnotations = [],
+  initialTracks = [],
 }: {
   initial?: Entry;
   initialAnnotations?: AnnotationDraft[];
+  initialTracks?: TrackDraft[];
 }) {
   const router = useRouter();
 
@@ -41,11 +50,15 @@ export default function EntryForm({
     initial?.interpretation ?? ""
   );
 
+  // "곡" 타입 전용: 항목 자체가 노래 한 곡이므로 가사를 entries에 바로 붙인다.
   const [lyrics, setLyrics] = useState(initial?.lyrics ?? "");
   const [annotations, setAnnotations] =
     useState<AnnotationDraft[]>(initialAnnotations);
   const [fetchingLyrics, setFetchingLyrics] = useState(false);
   const [lyricsError, setLyricsError] = useState("");
+
+  // 앨범/EP/싱글 전용: 제목이 앨범명이라 곡별로 트랙을 따로 두고 각각 가사를 가져온다.
+  const [tracks, setTracks] = useState<TrackDraft[]>(initialTracks);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -184,6 +197,47 @@ export default function EntryForm({
     if (insErr) throw insErr;
   }
 
+  // 트랙(곡) 목록도 같은 "전체 삭제 후 다시 삽입" 전략을 쓴다.
+  // 새로 넣은 트랙들의 id를 받아와서, 그 순서 그대로 각 트랙의 해석들을 매칭해 넣는다.
+  async function saveTracks(entryId: string) {
+    const { error: delErr } = await supabase
+      .from("tracks")
+      .delete()
+      .eq("entry_id", entryId);
+    if (delErr) throw delErr;
+
+    if (tracks.length === 0) return;
+
+    const rows = tracks.map((t) => ({
+      entry_id: entryId,
+      title: t.title.trim(),
+      lyrics: t.lyrics.trim() || null,
+    }));
+    const { data: inserted, error: insErr } = await supabase
+      .from("tracks")
+      .insert(rows)
+      .select();
+    if (insErr) throw insErr;
+    if (!inserted) return;
+
+    const annotationRows = inserted.flatMap((row: { id: string }, i: number) =>
+      tracks[i].annotations.map((a) => ({
+        track_id: row.id,
+        start_offset: a.start_offset,
+        end_offset: a.end_offset,
+        quote: a.quote,
+        note: a.note,
+      }))
+    );
+
+    if (annotationRows.length > 0) {
+      const { error: annErr } = await supabase
+        .from("track_annotations")
+        .insert(annotationRows);
+      if (annErr) throw annErr;
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!artist.trim() || !title.trim()) {
@@ -216,6 +270,7 @@ export default function EntryForm({
         if (dbError) throw dbError;
 
         await saveAnnotations(initial.id);
+        await saveTracks(initial.id);
         router.push(`/entry/${initial.id}`);
         router.refresh();
         return;
@@ -228,7 +283,10 @@ export default function EntryForm({
         .single();
       if (dbError) throw dbError;
 
-      if (data) await saveAnnotations(data.id);
+      if (data) {
+        await saveAnnotations(data.id);
+        await saveTracks(data.id);
+      }
       router.push(data ? `/entry/${data.id}` : "/");
       router.refresh();
     } catch (err) {
@@ -424,42 +482,61 @@ export default function EntryForm({
         </div>
       )}
 
-      <div className="form-group">
-        <label className="text-caption-strong" htmlFor="lyrics">
-          가사
-        </label>
-        <div className="lyrics-fetch-row">
-          <button
-            type="button"
-            className="btn-secondary-pill"
-            onClick={fetchLyrics}
-            disabled={fetchingLyrics || !artist.trim() || !title.trim()}
-          >
-            {fetchingLyrics ? "가져오는 중…" : "가사 자동으로 가져오기"}
-          </button>
-          {lyricsError && (
-            <span className="text-caption form-error">{lyricsError}</span>
-          )}
-        </div>
-        <textarea
-          id="lyrics"
-          className="textarea"
-          rows={8}
-          value={lyrics}
-          onChange={(e) => handleLyricsChange(e.target.value)}
-          placeholder="가사를 붙여넣거나, 위 버튼으로 자동으로 가져와보세요"
-        />
-      </div>
+      {type === "song" ? (
+        <>
+          <div className="form-group">
+            <label className="text-caption-strong" htmlFor="lyrics">
+              가사
+            </label>
+            <div className="lyrics-fetch-row">
+              <button
+                type="button"
+                className="btn-secondary-pill"
+                onClick={fetchLyrics}
+                disabled={fetchingLyrics || !artist.trim() || !title.trim()}
+              >
+                {fetchingLyrics ? "가져오는 중…" : "가사 자동으로 가져오기"}
+              </button>
+              {lyricsError && (
+                <span className="text-caption form-error">{lyricsError}</span>
+              )}
+            </div>
+            <textarea
+              id="lyrics"
+              className="textarea"
+              rows={8}
+              value={lyrics}
+              onChange={(e) => handleLyricsChange(e.target.value)}
+              placeholder="가사를 붙여넣거나, 위 버튼으로 자동으로 가져와보세요"
+            />
+          </div>
 
-      {lyrics.trim() && (
+          {lyrics.trim() && (
+            <div className="form-group">
+              <label className="text-caption-strong">구절별 해석</label>
+              <LyricsAnnotator
+                lyrics={lyrics}
+                annotations={annotations}
+                editable
+                onAdd={handleAddAnnotation}
+                onDelete={handleDeleteAnnotation}
+              />
+            </div>
+          )}
+        </>
+      ) : (
         <div className="form-group">
-          <label className="text-caption-strong">구절별 해석</label>
-          <LyricsAnnotator
-            lyrics={lyrics}
-            annotations={annotations}
-            editable
-            onAdd={handleAddAnnotation}
-            onDelete={handleDeleteAnnotation}
+          <label className="text-caption-strong">
+            트랙(곡)별 가사 & 해석{" "}
+            <span className="text-fine-print">
+              (앨범/EP/싱글은 곡이 여러 개라 트랙마다 따로 가사를 가져와요)
+            </span>
+          </label>
+          <TrackList
+            artist={artist}
+            appleMusicId={appleMusicId}
+            tracks={tracks}
+            onChange={setTracks}
           />
         </div>
       )}

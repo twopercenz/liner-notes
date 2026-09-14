@@ -3,7 +3,10 @@ import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import DeleteButton from "@/components/DeleteButton";
 import LyricsAnnotator from "@/components/LyricsAnnotator";
-import { Annotation, Entry, TYPE_LABEL } from "@/lib/types";
+import TrackListView, {
+  TrackWithAnnotations,
+} from "@/components/TrackListView";
+import { Annotation, Entry, TYPE_LABEL, Track, TrackAnnotation } from "@/lib/types";
 
 export const revalidate = 0;
 
@@ -22,13 +25,54 @@ export default async function EntryDetailPage({
   if (!data) notFound();
   const entry = data as Entry;
 
-  const { data: annotations } = await supabase
-    .from("annotations")
-    .select("*")
-    .eq("entry_id", id)
-    .order("start_offset", { ascending: true });
+  const [{ data: annotations }, { data: tracks }] = await Promise.all([
+    supabase
+      .from("annotations")
+      .select("*")
+      .eq("entry_id", id)
+      .order("start_offset", { ascending: true }),
+    supabase
+      .from("tracks")
+      .select("*")
+      .eq("entry_id", id)
+      .order("created_at", { ascending: true }),
+  ]);
 
-  const hasNotes = Boolean(entry.review || entry.interpretation || entry.lyrics);
+  const trackRows = (tracks ?? []) as Track[];
+  let tracksWithAnnotations: TrackWithAnnotations[] = trackRows.map((t) => ({
+    ...t,
+    annotations: [],
+  }));
+
+  if (trackRows.length > 0) {
+    const { data: trackAnnotations } = await supabase
+      .from("track_annotations")
+      .select("*")
+      .in(
+        "track_id",
+        trackRows.map((t) => t.id)
+      )
+      .order("start_offset", { ascending: true });
+
+    const byTrackId = new Map<string, TrackAnnotation[]>();
+    for (const a of (trackAnnotations ?? []) as TrackAnnotation[]) {
+      const list = byTrackId.get(a.track_id) ?? [];
+      list.push(a);
+      byTrackId.set(a.track_id, list);
+    }
+
+    tracksWithAnnotations = tracksWithAnnotations.map((t) => ({
+      ...t,
+      annotations: byTrackId.get(t.id) ?? [],
+    }));
+  }
+
+  const hasNotes = Boolean(
+    entry.review ||
+      entry.interpretation ||
+      entry.lyrics ||
+      tracksWithAnnotations.length > 0
+  );
 
   return (
     <section className="product-tile product-tile--light entry-detail">
@@ -76,6 +120,18 @@ export default async function EntryDetailPage({
             lyrics={entry.lyrics}
             annotations={(annotations ?? []) as Annotation[]}
           />
+        </div>
+      )}
+
+      {tracksWithAnnotations.length > 0 && (
+        <div className="detail-section">
+          <h2 className="text-caption-strong">
+            트랙{" "}
+            <span className="text-fine-print">
+              (제목을 누르면 가사와 해석이 펼쳐져요)
+            </span>
+          </h2>
+          <TrackListView tracks={tracksWithAnnotations} />
         </div>
       )}
 

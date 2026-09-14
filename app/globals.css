@@ -668,6 +668,72 @@ button {
   align-items: center;
 }
 
+/* ==========================================================================
+   Track list (앨범/EP/싱글의 곡별 가사)
+   ========================================================================== */
+
+.track-add-row {
+  display: flex;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+
+.track-add-row .text-input {
+  flex: 1;
+}
+
+.track-items {
+  list-style: none;
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.track-item {
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.track-item-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  cursor: pointer;
+  background: var(--color-canvas);
+}
+
+.track-title-input {
+  flex: 1;
+  border-color: transparent;
+  background: transparent;
+}
+
+.track-title-input:focus {
+  border-color: var(--color-hairline);
+  background: var(--color-canvas);
+}
+
+.track-item-header--view {
+  width: 100%;
+  border: none;
+  justify-content: space-between;
+  font-family: inherit;
+  text-align: left;
+}
+
+.track-item-body {
+  padding: var(--space-sm);
+  border-top: 1px solid var(--color-hairline);
+  background: var(--color-canvas-parchment);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
 .config-warning {
   background: #fff4ed;
   color: var(--color-danger);

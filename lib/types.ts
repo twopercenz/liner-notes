@@ -36,6 +36,35 @@ export interface AnnotationDraft {
   note: string;
 }
 
+/** 앨범/EP/싱글처럼 곡이 여러 개인 항목의 개별 트랙(곡). DB에 저장된 것. */
+export interface Track {
+  id: string;
+  entry_id: string;
+  title: string;
+  track_number: number | null;
+  lyrics: string | null;
+  created_at: string;
+}
+
+/** DB에 저장된, 트랙 가사에 대한 구절별 해석. */
+export interface TrackAnnotation {
+  id: string;
+  track_id: string;
+  start_offset: number;
+  end_offset: number;
+  quote: string;
+  note: string;
+  created_at: string;
+}
+
+/** 폼에서 작성 중인 트랙 한 곡 (아직 저장 전이면 id는 클라이언트에서 생성한 임시 id). */
+export interface TrackDraft {
+  id: string;
+  title: string;
+  lyrics: string;
+  annotations: AnnotationDraft[];
+}
+
 export const TYPE_LABEL: Record<EntryType, string> = {
   album: "앨범",
   ep: "EP",
